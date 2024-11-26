@@ -1,0 +1,54 @@
+I want to write a python script to predict the amount of organic traffic a website will receive in the future. The script will use the following libraries:
+import streamlit as st
+import pandas as pd
+from prophet import Prophet
+import matplotlib.pyplot as plt
+
+The program will be built in streamlit
+
+There will be a "Ahrefs Traffic Data" CSV input in a sidebar. The csv will have 17 columns, but we will only use Dates (Under the heading "Metric"), Referring domains, and Avg. organic traffic. Skip the second and third lines when reading this csv. 
+
+I want this data to be split into two different data sets, forecast_data and test_data. test_data will contain the most recent 182 days of data. forecast_data will contain the rest of the data.
+
+forecast_data will be used with prophet to predict traffic for the next 182 days. That prediction will then be compared to the the data in test_data to see how accurate the forecast was. 
+
+I want there to be a table output which which lists the Mean Absolute Percentage Error for each day. 
+
+Make a graph output which shows both sets of data, as well as the forecast line.
+
+There should also be a text output which shows the Weighted Average Percentage Error. 
+
+There are some additional requirements. 
+I would like a set of tick boxes that changes which factors are included in the prophet forecast:
+
+A "Weekly seasonality" tickbox. If ticked, weekly_seasonality is true and if not ticked, weekly_seasonality is false.
+
+A "algorithm updates" tickbox. If ticked, this list of dates that the algorithm changed should also be included as regressors:
+November 11, 2024
+August 15, 2024
+June 20, 2024
+May 14, 2024
+May 6, 2024
+March 5, 2024
+November 8, 2023
+November 2, 2023
+October 5, 2023
+October 4, 2023
+September 14, 2023
+August 22, 2023
+April 12, 2023
+March 15, 2023
+February 21, 2023
+December 14, 2022
+December 5, 2022
+October 19, 2022
+September 20, 2022
+September 12, 2022
+
+If not ticked, do not use these dates.
+
+A "Referring domains" tickbox. If ticked, include Referring domains from the csv as an extraneous variable in the prophet forecast. If not ticked, do not include referring domains. 
+
+A "Changepoint Range" text box. Whatever value is placed in this text box should define the changepoint_range used in the model. By default the changepoint_range should be 0.9.
+
+A "Trend flexibility" text box. Whatever value is placed in this text box should define the changepoint_prior_scale used in the model. By default the changepoint_range should be 0.05.
