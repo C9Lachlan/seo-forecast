@@ -27,17 +27,30 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file, skiprows=[1, 2])
 
     # Use only 'Metric', 'Referring domains', and 'Avg. organic traffic' columns
-    df = df[['Metric', ' Referring domains', ' Avg. organic traffic']]
+    df = df[['Metric', ' Referring domains', ' Organic traffic']]
 
     # Rename columns
-    df = df.rename(columns={'Metric': 'ds', ' Avg. organic traffic': 'y'})
+    df = df.rename(columns={'Metric': 'ds', ' Organic traffic': 'y'})
 
     # Convert 'ds' to datetime
     df['ds'] = pd.to_datetime(df['ds'])
 
+    # Drop rows with NaN in 'ds' or 'y'
+    df = df.dropna(subset=['ds', 'y'])
+
     # Sort by date
     df = df.sort_values('ds')
 
+    # **Display the DataFrame**
+    st.write("### Data Preview:")
+    st.dataframe(df)
+
+    # Display Data Summary
+    st.write("### Data Summary:")
+    st.write(df.describe())
+    st.write(f"Total data points: {len(df)}")
+
+    # Handle algorithm updates
     if algorithm_updates:
         # List of algorithm update dates
         algorithm_update_dates = [
@@ -78,67 +91,92 @@ if uploaded_file is not None:
         if 'Referring domains' in df.columns:
             df = df.drop('Referring domains', axis=1)
 
-    # Split data into forecast_data and test_data
-    test_length = 182
-    forecast_data = df[:-test_length].copy()
-    test_data = df[-test_length:].copy()
+    # **Display the DataFrame after processing**
+    st.write("### Processed Data:")
+    st.dataframe(df)
 
-    # Initialize Prophet model with specified parameters
-    m = Prophet(
-        weekly_seasonality=weekly_seasonality,
-        changepoint_range=changepoint_range,
-        changepoint_prior_scale=trend_flexibility
-    )
+    # Determine the length of the dataset
+    data_length = len(df)
 
-    if algorithm_updates:
-        m.add_regressor('algorithm_update')
+    # Ensure we have enough data points
+    if data_length < 3:
+        st.error("Not enough data to build the model. Please upload a CSV file with at least 3 data points.")
+    else:
+        # Adjust test_length based on data size
+        test_length = min(182, data_length // 2)
 
-    if referring_domains_checkbox:
-        m.add_regressor('Referring domains')
+        # Split data into forecast_data and test_data
+        forecast_data = df[:-test_length].copy()
+        test_data = df[-test_length:].copy()
 
-    # Fit the model
-    with st.spinner('Training the model...'):
-        m.fit(forecast_data)
+        # **Display the Forecast and Test DataFrames**
+        st.write("### Forecast Data:")
+        st.dataframe(forecast_data)
 
-    # Prepare future dataframe
-    future = test_data[['ds']].copy()
+        st.write("### Test Data:")
+        st.dataframe(test_data)
 
-    if algorithm_updates:
-        future['algorithm_update'] = test_data['algorithm_update']
-    if referring_domains_checkbox:
-        future['Referring domains'] = test_data['Referring domains']
+        # Initialize Prophet model with specified parameters
+        m = Prophet(
+            weekly_seasonality=weekly_seasonality,
+            changepoint_range=changepoint_range,
+            changepoint_prior_scale=trend_flexibility,
+            seasonality_mode='additive'
+        )
 
-    # Make the prediction
-    forecast = m.predict(future)
+        if algorithm_updates:
+            m.add_regressor('algorithm_update')
 
-    # Merge forecast with actuals
-    forecast['y'] = test_data['y'].values
+        if referring_domains_checkbox:
+            m.add_regressor(' Referring domains')
 
-    # Compute MAPE
-    forecast['MAPE'] = np.where(forecast['y'] == 0, np.nan,
-                                abs((forecast['y'] - forecast['yhat']) / forecast['y']) * 100)
+        # **Fit the model inside a try-except block to catch errors**
+        try:
+            with st.spinner('Training the model...'):
+                m.fit(forecast_data)
+        except ValueError as e:
+            st.error(f"Error fitting the model: {e}")
+            st.stop()
 
-    # Compute WAPE
-    WAPE = np.sum(np.abs(forecast['y'] - forecast['yhat'])) / np.sum(forecast['y'])
-    WAPE_percentage = WAPE * 100
+        # Prepare future dataframe
+        future = test_data[['ds']].copy()
 
-    # Plotting
-    # Combine forecast_data and test_data for plotting
-    full_data = pd.concat([forecast_data, test_data])
+        if algorithm_updates:
+            future['algorithm_update'] = test_data['algorithm_update']
+        if referring_domains_checkbox:
+            future[' Referring domains'] = test_data[' Referring domains']
 
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.plot(full_data['ds'], full_data['y'], label='Historical Data')
-    ax.plot(forecast['ds'], forecast['yhat'], label='Forecast')
-    ax.plot(forecast['ds'], forecast['y'], label='Actual')
-    ax.set_xlabel('Date')
-    ax.set_ylabel('Traffic')
-    ax.legend()
+        # Make the prediction
+        forecast = m.predict(future)
 
-    st.pyplot(fig)
+        # Merge forecast with actuals
+        forecast['y'] = test_data['y'].values
 
-    # Display MAPE table
-    st.write("Mean Absolute Percentage Error (MAPE) for each day:")
-    st.dataframe(forecast[['ds', 'y', 'yhat', 'MAPE']])
+        # Compute MAPE
+        forecast['MAPE'] = np.where(forecast['y'] == 0, np.nan,
+                                    abs((forecast['y'] - forecast['yhat']) / forecast['y']) * 100)
 
-    # Display WAPE
-    st.write(f"Weighted Average Percentage Error (WAPE): {WAPE_percentage:.2f}%")
+        # Compute WAPE
+        WAPE = np.sum(np.abs(forecast['y'] - forecast['yhat'])) / np.sum(forecast['y'])
+        WAPE_percentage = WAPE * 100
+
+        # Plotting
+        # Combine forecast_data and test_data for plotting
+        full_data = pd.concat([forecast_data, test_data])
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(full_data['ds'], full_data['y'], label='Historical Data')
+        ax.plot(forecast['ds'], forecast['yhat'], label='Forecast')
+        ax.plot(forecast['ds'], forecast['y'], label='Actual')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Traffic')
+        ax.legend()
+
+        st.pyplot(fig)
+
+        # Display MAPE table
+        st.write("### Mean Absolute Percentage Error (MAPE) for each day:")
+        st.dataframe(forecast[['ds', 'y', 'yhat', 'MAPE']])
+
+        # Display WAPE
+        st.write(f"### Weighted Average Percentage Error (WAPE): {WAPE_percentage:.2f}%")

@@ -2,19 +2,22 @@ I want to write a python script to predict the amount of organic traffic a websi
 import streamlit as st
 import pandas as pd
 from prophet import Prophet
-import matplotlib.pyplot as plt
 
 The program will be built in streamlit
 
-There will be a "Ahrefs Traffic Data" CSV input in a sidebar. The csv will have 17 columns, but we will only use Dates (Under the heading "Metric"), Referring domains, and Avg. organic traffic. Skip the second and third lines when reading this csv. 
+There will be a "Ahrefs Traffic Data" CSV input in a sidebar. The csv will have 17 columns, but we will only use Dates (Under the heading "Metric"), " Referring domains", and " Organic traffic" Skip the second and third lines when reading this csv. 
 
 I want this data to be split into two different data sets, forecast_data and test_data. test_data will contain the most recent 182 days of data. forecast_data will contain the rest of the data.
 
-forecast_data will be used with prophet to predict traffic for the next 182 days. That prediction will then be compared to the the data in test_data to see how accurate the forecast was. 
+the forecast_data will be used with prophet to model traffic for the next 182 days. The the model will also incorperate additional parameters based on user inputs. That prediction will then be compared to the the data in test_data to see how accurate the forecast was. 
 
 I want there to be a table output which which lists the Mean Absolute Percentage Error for each day. 
 
-Make a graph output which shows both sets of data, as well as the forecast line.
+Make a graph output which shows both sets of data, as well as the forecast line. Use:
+
+from prophet.plot import plot_plotly, plot_components_plotly
+
+plot_plotly(m, forecast)
 
 There should also be a text output which shows the Weighted Average Percentage Error. 
 
